@@ -18,32 +18,37 @@ public class Main {
 
     private static void scanConsole() {
         new Thread(() -> {
-            String line;
-            while (running && (line = br.readLine()) != null) {
-                switch (line) {
-                    case "startServer":
-                        if (!serverProcess .isAlive()) {
-                            start();
-                        } else {
-                            System.out.println(new SimpleDateFormat("[hh:mm:ss.SSS]") + "Gmod is already start");
-                        }
-                        break:
-                    case "stopServer":
-                        if (serverProcess .isAlive()) {
-                            stop();
-                        } else {
-                            System.out.println(new SimpleDateFormat("[hh:mm:ss.SSS]") + "Gmod is already stop");
-                        }
-                        break;
-                    case "stop":
-                        if (serverProcess.isAlive()) {
-                            stop();
-                        }
-                        running = false;
-                        break;
-                    default:
-                        break;
+            try {
+                String line;
+                BufferedReader sys = new BufferedReader(new InputStreamReader(System.in));
+                while (running && (line = sys.readLine()) != null) {
+                    switch (line) {
+                        case "startServer":
+                            if (!serverProcess .isAlive()) {
+                                start();
+                            } else {
+                                System.out.println(new SimpleDateFormat("[hh:mm:ss.SSS]") + "Gmod is already start");
+                            }
+                            break;
+                        case "stopServer":
+                            if (serverProcess .isAlive()) {
+                                stop();
+                            } else {
+                                System.out.println(new SimpleDateFormat("[hh:mm:ss.SSS]") + "Gmod is already stop");
+                            }
+                            break;
+                        case "stop":
+                            if (serverProcess.isAlive()) {
+                                stop();
+                            }
+                            running = false;
+                            break;
+                        default:
+                            break;
+                    }
                 }
+            } catch (IOException e) {
+                e.printStackTrace();
             }
         }).start();
     }
@@ -54,7 +59,7 @@ public class Main {
             bw.write("exit\n");
             bw.flush();
 
-            if (serverProcess.waitFor(5L, TimeUnit.MINUTES) {
+            if (serverProcess.waitFor(5L, TimeUnit.MINUTES)) {
                 System.out.println(new SimpleDateFormat("[hh:mm:ss.SSS]") + "Gmod's process is going to be destroy");
                 serverProcess.destroy();
             }
@@ -65,7 +70,7 @@ public class Main {
     }
 
     private static void start() {
-        try () {
+        try {
             System.out.println(new SimpleDateFormat("[hh:mm:ss.SSS]") + "Gmod's process is going to start");
             serverProcess = new ProcessBuilder().directory(new File("/home/jeu/Steam/Gmod"))
                     .command(Arrays.asList("./srcds_run",
@@ -77,7 +82,7 @@ public class Main {
 
             brNormal = new BufferedReader(new InputStreamReader(serverProcess.getInputStream()));
             brError = new BufferedReader(new InputStreamReader(serverProcess.getErrorStream()));
-            bw = new BufferedWriter(new OutputStreamWriter(serverProcess.getOutputStream()))
+            bw = new BufferedWriter(new OutputStreamWriter(serverProcess.getOutputStream()));
 
             scanStream(brNormal);
             scanStream(brError);
