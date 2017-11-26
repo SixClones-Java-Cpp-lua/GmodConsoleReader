@@ -1,19 +1,28 @@
 import java.io.*;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
 public class Main {
     private static boolean running = true;
     private static Process serverProcess;
-    private static BufferedReader brNormal;
-    private static BufferedReader brError;
     private static BufferedWriter bw;
 
 
     public static void main(String[] args) {
         scanConsole();
         start();
+        new Thread(() -> {
+            while (running) {
+                System.out.println(new SimpleDateFormat("[hh:mm:ss.SSS]").format(new Date(System.currentTimeMillis())) + "isAlive :" + serverProcess.isAlive());
+                try {
+                    Thread.sleep(1000L);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }).start();
     }
 
     private static void scanConsole() {
@@ -27,14 +36,14 @@ public class Main {
                             if (!serverProcess .isAlive()) {
                                 start();
                             } else {
-                                System.out.println(new SimpleDateFormat("[hh:mm:ss.SSS]") + "Gmod is already start");
+                                System.out.println(new SimpleDateFormat("[hh:mm:ss.SSS]").format(new Date(System.currentTimeMillis())) + "Gmod is already start");
                             }
                             break;
                         case "stopServer":
                             if (serverProcess .isAlive()) {
                                 stop();
                             } else {
-                                System.out.println(new SimpleDateFormat("[hh:mm:ss.SSS]") + "Gmod is already stop");
+                                System.out.println(new SimpleDateFormat("[hh:mm:ss.SSS]").format(new Date(System.currentTimeMillis())) + "Gmod is already stop");
                             }
                             break;
                         case "stop":
@@ -55,12 +64,12 @@ public class Main {
 
     private static void stop() {
         try {
-            System.out.println(new SimpleDateFormat("[hh:mm:ss.SSS]") + "Gmod's process is going to stop");
-            bw.write("exit\n");
+            System.out.println(new SimpleDateFormat("[hh:mm:ss.SSS]").format(new Date(System.currentTimeMillis())) + "Gmod's process is going to stop");
+            bw.write("exit\n") ;
             bw.flush();
-
-            if (serverProcess.waitFor(5L, TimeUnit.MINUTES)) {
-                System.out.println(new SimpleDateFormat("[hh:mm:ss.SSS]") + "Gmod's process is going to be destroy");
+            System.out.println(new SimpleDateFormat("[hh:mm:ss.SSS]").format(new Date(System.currentTimeMillis())) + "write done");
+            if (!serverProcess.waitFor(20, TimeUnit.SECONDS)) {
+                System.out.println(new SimpleDateFormat("[hh:mm:ss.SSS]").format(new Date(System.currentTimeMillis())) + "Gmod's process is going to be destroy");
                 serverProcess.destroy();
             }
         } catch (IOException | InterruptedException e) {
@@ -71,21 +80,17 @@ public class Main {
 
     private static void start() {
         try {
-            System.out.println(new SimpleDateFormat("[hh:mm:ss.SSS]") + "Gmod's process is going to start");
+            System.out.println(new SimpleDateFormat("[hh:mm:ss.SSS]").format(new Date(System.currentTimeMillis())) + "Gmod's process is going to start");
             serverProcess = new ProcessBuilder().directory(new File("/home/jeu/Steam/Gmod"))
-                    .command(Arrays.asList("./srcds_run",
-                            "-game",
-                            "garrysmod",
-                            "+maxplayers",
-                            "5"))
+                    .command(Arrays.asList(
+                            "./srcds_run-backup -game garrysmod +maxplayers 5 +map rp_frenchtownsend_v4 +host_workshop_collection 1206592668".split(" ")
+                    ))
                     .start();
 
-            brNormal = new BufferedReader(new InputStreamReader(serverProcess.getInputStream()));
-            brError = new BufferedReader(new InputStreamReader(serverProcess.getErrorStream()));
             bw = new BufferedWriter(new OutputStreamWriter(serverProcess.getOutputStream()));
 
-            scanStream(brNormal);
-            scanStream(brError);
+            scanStream(new BufferedReader(new InputStreamReader(serverProcess.getErrorStream())));
+            scanStream(new BufferedReader(new InputStreamReader(serverProcess.getInputStream())));
             processExitDetector();
         } catch (IOException e) {
             e.printStackTrace();
@@ -97,7 +102,7 @@ public class Main {
             String line;
             try {
                 while (serverProcess.isAlive() && (line = br.readLine()) != null) {
-                    System.out.println(new SimpleDateFormat("[hh:mm:ss.SSS]") + "[Process] " + line);
+                    System.out.println(new SimpleDateFormat("[hh:mm:ss.SSS]").format(new Date(System.currentTimeMillis())) + "[Process] " + line);
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -110,7 +115,7 @@ public class Main {
             if (serverProcess.isAlive()) {
                 try {
                     serverProcess.waitFor();
-                    System.out.println(new SimpleDateFormat("[hh:mm:ss.SSS]") + "Gmod has stoped");
+                    System.out.println(new SimpleDateFormat("[hh:mm:ss.SSS]").format(new Date(System.currentTimeMillis())) + "Gmod has stoped");
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -118,5 +123,3 @@ public class Main {
         }).start();
     }
 }
-
-
