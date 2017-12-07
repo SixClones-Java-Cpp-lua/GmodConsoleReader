@@ -83,7 +83,7 @@ public class Main {
             System.out.println(new SimpleDateFormat("[hh:mm:ss.SSS]").format(new Date(System.currentTimeMillis())) + "Gmod's process is going to start");
             serverProcess = new ProcessBuilder().directory(new File("/home/jeu/Steam/Gmod"))
                     .command(Arrays.asList(
-                            "./srcds_run-backup -game garrysmod +maxplayers 5 +map rp_frenchtownsend_v4 +host_workshop_collection 1206592668".split(" ")
+                            "./srcds_run -game garrysmod +maxplayers 5 +map rp_frenchtownsend_v4 +host_workshop_collection 1206592668".split(" ")
                     ))
                     .start();
 
