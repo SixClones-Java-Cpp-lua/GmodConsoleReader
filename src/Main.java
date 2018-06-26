@@ -85,9 +85,7 @@ public class Main {
     /**
      * Use to send commande to the garry's mod server.
      *
-     * @param data
-     * The commande to send. Warming : with the method, some command will not be execute by the garry's mod server
-     *
+     * @param data The commande to send. Warming : with the method, some command will not be execute by the garry's mod server
      */
     private static void write(String data) {
         try {
@@ -132,8 +130,7 @@ public class Main {
     /**
      * Wait to the file to be create and scan everything that write in
      *
-     * @param f
-     * The file to wait and scan
+     * @param f The file to wait and scan
      */
     private static void waitAndScan(File f) {
         new Thread(() -> {
@@ -148,10 +145,10 @@ public class Main {
                                 Pattern getLength = Pattern.compile("(\\d+)$");
                                 Matcher getLengthMatcher = getLength.matcher(line);
                                 if (getLengthMatcher.find()) {
-                                    int a = line.split("").length;
+                                    int a = line.length();
                                     line = repacleSpecialCharacter(line);
 
-                                    int aAjouter = count("\\", line) - ((a-line.split("").length)/7) - count("\\\\", line, true);
+                                    int aAjouter = count("\\", line) - ((a - line.length())/7) - count("\\\\", line);
 
                                     Pattern p = Pattern.compile("^write\\([123], \"(.{" + (Integer.parseInt(getLengthMatcher.group(1)) + aAjouter) + "})\", \\d+\\)\\s+= \\d+$");
                                     Matcher m = p.matcher(line);
@@ -173,35 +170,36 @@ public class Main {
         }).start();
     }
 
+    /**
+     * replace all special character like \303\247 (meaning 'ç') or \303\251 (meaning 'é')
+     *
+     * @param line the string where you need to replace special character
+     * @return the line where special character were replaced
+     */
     private static String repacleSpecialCharacter(String line) {
         line = line.replaceAll(Pattern.quote("\\") + "303" + Pattern.quote("\\") + "247", "ç");
         line = line.replaceAll(Pattern.quote("\\") + "303" + Pattern.quote("\\") + "251", "é");
         return line;
     }
 
-    private static int count(String s, String line, boolean a) {
-        int result = 0;
-        if (a) {
-            for (int i = s.split("").length; i < line.split("").length; i++) {
-                if (s.equalsIgnoreCase(line.substring(i - s.split("").length, i))) {
-                    result++;
-                }
-            }
-        } else {
-            return count(s, line);
-        }
-        return result;
-    }
-
+    /**
+     * Search a string in a other string
+     * @param s
+     * the string to search
+     * @param line
+     * the other string
+     * @return
+     * return the number of apparition of s in line
+     */
     private static int count(String s, String line) {
         int result = 0;
-        for (String letter : line.split("")) {
-            if (letter.equalsIgnoreCase(s)) {
+        for (int i = s.length(); i < line.length(); i++) {
+            if (s.equalsIgnoreCase(line.substring(i - s.length(), i))) {
                 result++;
             }
         }
         return result;
-    }
+}
 
     /**
      * The function wait until the process run and when the process stop delete clientError, serverError and logFile files
