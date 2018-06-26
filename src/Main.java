@@ -7,7 +7,7 @@ import java.util.regex.Pattern;
 
 public class Main {
 
-    private static File logFile = new File("/home/jeu/Steam/Gmod/garrysmod/log/gmod.log");
+    private static File logFile = new File("./gmod.log");
     //private static File clientError = new File("/home/jeu/Steam/Gmod/garrysmod/clientside_errors.txt");
     //private static File serverError = new File("/home/jeu/Steam/Gmod/garrysmod/lua_errors_server.txt");
     private static File commandFile = new File("/home/jeu/Steam/Gmod/garrysmod/lua/autorun/server/sv_commande_ne_pas_modifer.lua");
@@ -31,6 +31,11 @@ public class Main {
         }
         if (logFile.exists()) {
             logFile.delete();
+        }
+        try {
+            logFile.createNewFile();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
         start();
     }
@@ -115,16 +120,32 @@ public class Main {
             System.out.println(new SimpleDateFormat("[hh:mm:ss.SSS]").format(new Date(System.currentTimeMillis())) + "Gmod's process is going to start");
             serverProcess = new ProcessBuilder().directory(new File("/home/jeu/Steam/Gmod"))
                     .command(Arrays.asList(
-                            "strace -o /home/jeu/Steam/Gmod/garrysmod/log/gmod.log -s 1024 -e write ./srcds_run -game garrysmod +maxplayers 15 +map rp_rockford_karnaka +host_workshop_collection 1382039356 -norestart".split(" ")
+                            "strace -o ./gmod.log -s 1024 -e write ./srcds_run -game garrysmod +maxplayers 15 +map rp_rockford_karnaka +host_workshop_collection 1382039356 -norestart".split(" ")
                     ))
                     .start();
-
             waitAndScan(logFile);
+            //scan(new BufferedReader(new InputStreamReader(serverProcess.getInputStream())));
+            //scan(new BufferedReader(new InputStreamReader(serverProcess.getErrorStream())));
 
             processExitDetector();
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private static void scan(BufferedReader bufferedReader) {
+        new Thread(() -> {
+            while (running) {
+                String line;
+                try {
+                    if ((line = bufferedReader.readLine()) != null) {
+                        System.out.println(line);
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }).start();
     }
 
     /**
@@ -135,6 +156,7 @@ public class Main {
     private static void waitAndScan(File f) {
         new Thread(() -> {
             while (running) {
+                System.out.println(f.exists() + " " + f.getAbsolutePath());
                 if (f.exists()) {
                     try {
                         BufferedReader br = new BufferedReader(new FileReader(f));
@@ -142,6 +164,7 @@ public class Main {
                         while ((line = br.readLine()) != null) {
                             Pattern needToScan = Pattern.compile("^write\\([123],.*");
                             if (needToScan.matcher(line).matches()) {
+                                System.out.println("hey");
                                 Pattern getLength = Pattern.compile("(\\d+)$");
                                 Matcher getLengthMatcher = getLength.matcher(line);
                                 if (getLengthMatcher.find()) {
