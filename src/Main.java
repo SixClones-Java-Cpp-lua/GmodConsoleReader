@@ -2,14 +2,15 @@ import java.io.*;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class Main {
 
-    private static File logDir = new File("/home/jeu/Steam/Gmod/garrysmod/log/");
-    private static File logFile;
-    private static File clientError = new File("/home/jeu/Steam/Gmod/garrysmod/clientside_errors.txt");
-    private static File serverError = new File("/home/jeu/Steam/Gmod/garrysmod/lua_errors_server.txt");
-    private static File commandFile = new File("/home/jeu/Steam/Gmod/garrysmod/addons/sixclonesjavaprocess/lua/autorun/server/sv_commande_ne_pas_modifer.lua\"");
+    private static File logFile = new File("/home/jeu/Steam/Gmod/garrysmod/log/gmod.log");
+    //private static File clientError = new File("/home/jeu/Steam/Gmod/garrysmod/clientside_errors.txt");
+    //private static File serverError = new File("/home/jeu/Steam/Gmod/garrysmod/lua_errors_server.txt");
+    private static File commandFile = new File("/home/jeu/Steam/Gmod/garrysmod/lua/autorun/server/sv_commande_ne_pas_modifer.lua");
     private static boolean running = true;
     private static Process serverProcess;
 
@@ -28,6 +29,9 @@ public class Main {
                 e.printStackTrace();
             }
         }
+        if (logFile.exists()) {
+            logFile.delete();
+        }
         start();
     }
 
@@ -43,14 +47,14 @@ public class Main {
                 while (running && (line = sys.readLine()) != null) {
                     switch (line) {
                         case "startServer":
-                            if (!serverProcess .isAlive()) {
+                            if (!serverProcess.isAlive()) {
                                 start();
                             } else {
                                 System.out.println(new SimpleDateFormat("[hh:mm:ss.SSS]").format(new Date(System.currentTimeMillis())) + "Gmod is already start");
                             }
                             break;
                         case "stopServer":
-                            if (serverProcess .isAlive()) {
+                            if (serverProcess.isAlive()) {
                                 write("_restart");
                             } else {
                                 System.out.println(new SimpleDateFormat("[hh:mm:ss.SSS]").format(new Date(System.currentTimeMillis())) + "Gmod is already stop");
@@ -63,6 +67,12 @@ public class Main {
                             running = false;
                             break;
                         default:
+                            if (line.startsWith("write ")) {
+                                write(line.replaceFirst("write ", "").replaceAll(" ", "\", \""));
+                                System.out.println("> RunConsoleCommande(\"" + line.replaceFirst("write ", "").replaceAll(" ", "\", \"") + "\")");
+                            } else {
+                                System.out.println("stopServer | startServer | stop | write [string]");
+                            }
                             break;
                     }
                 }
@@ -86,7 +96,7 @@ public class Main {
             fw.flush();
             fw.close();
 
-            Thread.sleep(5000);
+            Thread.sleep(3000);
 
             fw = new FileWriter(commandFile);
             fw.write("-- NE PAS MODIFIER CE FICHIER"
@@ -94,11 +104,6 @@ public class Main {
                     + "\nprint(\"module commande app java active\")");
             fw.flush();
             fw.close();
-						/*
--- NE PAS MODIFIER CE FICHIER
--- fichier permettant a au programme java d'envoyer des commandes a gmod
-print("module commande app java active")
-						 */
         } catch (InterruptedException | IOException e) {
             e.printStackTrace();
         }
@@ -112,40 +117,16 @@ print("module commande app java active")
             System.out.println(new SimpleDateFormat("[hh:mm:ss.SSS]").format(new Date(System.currentTimeMillis())) + "Gmod's process is going to start");
             serverProcess = new ProcessBuilder().directory(new File("/home/jeu/Steam/Gmod"))
                     .command(Arrays.asList(
-                            "./srcds_run -game garrysmod +maxplayers 5 -norestart".split(" ")
+                            "strace -o /home/jeu/Steam/Gmod/garrysmod/log/gmod.log -s 1024 -e write ./srcds_run -game garrysmod +maxplayers 15 +map rp_rockford_karnaka +host_workshop_collection 1382039356 -norestart".split(" ")
                     ))
                     .start();
 
-            scanStream(new BufferedReader(new InputStreamReader(serverProcess.getInputStream())));
-            waitAndScan(clientError);
-            waitAndScan(serverError);
-            SimpleDateFormat format = new SimpleDateFormat("MMdd");
-            logFile = new File(logDir.getAbsolutePath() + "L" + format.format(new Date(System.currentTimeMillis())) + "000.log");
             waitAndScan(logFile);
 
             processExitDetector();
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-    /**
-     *  Use to get the output of a sub-process (the garry's mod server)
-     *
-     * @param br
-     * The bufferedReader the function need to scan
-     */
-    private static void scanStream(BufferedReader br) {
-        new Thread(() -> {
-            String line;
-            try {
-                while (serverProcess.isAlive() && (line = br.readLine()) != null) {
-                    System.out.println(new SimpleDateFormat("[hh:mm:ss.SSS]").format(new Date(System.currentTimeMillis())) + "[Process] " + line);
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }).start();
     }
 
     /**
@@ -162,7 +143,26 @@ print("module commande app java active")
                         BufferedReader br = new BufferedReader(new FileReader(f));
                         String line;
                         while ((line = br.readLine()) != null) {
-                            System.out.println(new SimpleDateFormat("[hh:mm:ss.SSS]").format(new Date(System.currentTimeMillis())) + "[Process] " + line);
+                            Pattern needToScan = Pattern.compile("^write\\([123],.*");
+                            if (needToScan.matcher(line).matches()) {
+                                Pattern getLength = Pattern.compile("(\\d+)$");
+                                Matcher getLengthMatcher = getLength.matcher(line);
+                                if (getLengthMatcher.find()) {
+                                    int a = line.split("").length;
+                                    line = repacleSpecialCharacter(line);
+
+                                    int aAjouter = count("\\", line) - ((a-line.split("").length)/7) - count("\\\\", line, true);
+
+                                    Pattern p = Pattern.compile("^write\\([123], \"(.{" + (Integer.parseInt(getLengthMatcher.group(1)) + aAjouter) + "})\", \\d+\\)\\s+= \\d+$");
+                                    Matcher m = p.matcher(line);
+                                    if (m.find()) {
+                                        String log = m.group(1);
+                                        for (String l : log.split("\\\\n")) {
+                                            System.out.println(l.replace("\\t", "    ").replace("\\\"", "\"").replace("\"\\", "\"").replace("\\\\", "\\"));
+                                        }
+                                    }
+                                }
+                            }
                         }
                         break;
                     } catch (IOException e) {
@@ -171,6 +171,36 @@ print("module commande app java active")
                 }
             }
         }).start();
+    }
+
+    private static String repacleSpecialCharacter(String line) {
+        line = line.replaceAll(Pattern.quote("\\") + "303" + Pattern.quote("\\") + "247", "ç");
+        line = line.replaceAll(Pattern.quote("\\") + "303" + Pattern.quote("\\") + "251", "é");
+        return line;
+    }
+
+    private static int count(String s, String line, boolean a) {
+        int result = 0;
+        if (a) {
+            for (int i = s.split("").length; i < line.split("").length; i++) {
+                if (s.equalsIgnoreCase(line.substring(i - s.split("").length, i))) {
+                    result++;
+                }
+            }
+        } else {
+            return count(s, line);
+        }
+        return result;
+    }
+
+    private static int count(String s, String line) {
+        int result = 0;
+        for (String letter : line.split("")) {
+            if (letter.equalsIgnoreCase(s)) {
+                result++;
+            }
+        }
+        return result;
     }
 
     /**
@@ -182,12 +212,6 @@ print("module commande app java active")
                 try {
                     serverProcess.waitFor();
                     System.out.println(new SimpleDateFormat("[hh:mm:ss.SSS]").format(new Date(System.currentTimeMillis())) + "Gmod has stoped");
-                    if (clientError.exists()) {
-                        clientError.delete();
-                    }
-                    if (serverError.exists()) {
-                        serverError.delete();
-                    }
                     if (logFile != null && logFile.exists()) {
                         logFile.delete();
                     }
