@@ -122,7 +122,7 @@ public class Main {
     }
 
     /**
-     * The function wait until the process run and when the process stop delete clientError, serverError and logFile files
+     * The function wait until the process run
      */
     private static void processExitDetector() {
         new Thread(() -> {
