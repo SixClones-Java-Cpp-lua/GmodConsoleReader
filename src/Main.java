@@ -4,36 +4,23 @@ import java.util.Date;
 
 public class Main {
 
-    private static File commandFile = new File("/home/jeu/Steam/Gmod/garrysmod/lua/autorun/server/sv_commande_ne_pas_modifer.lua");
     private static Process serverProcess;
+    private static BufferedWriter printer;
 
     public static void main(String[] args) {
-        if (!commandFile.exists()) {
-            try {
-                commandFile.createNewFile();
-                FileWriter fw = new FileWriter(commandFile);
-                fw.write("-- NE PAS MODIFIER CE FICHIER"
-                        + "\n-- fichier permettant a au programme java d'envoyer des commandes a gmod"
-                        + "\nprint(\"module commande app java active\")");
-                fw.flush();
-                fw.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
+        scanConsole();
         start();
     }
 
-
-    /*
-     * Use to scan th data the user give to the program
-
+    /**
+     * Use to scan the data the user give to the program
+     */
     private static void scanConsole() {
         new Thread(() -> {
             try {
                 String line;
                 BufferedReader sys = new BufferedReader(new InputStreamReader(System.in));
-                while (running && (line = sys.readLine()) != null) {
+                while ((line = sys.readLine()) != null) {
                     switch (line) {
                         case "startServer":
                             if (!serverProcess.isAlive()) {
@@ -53,12 +40,12 @@ public class Main {
                             if (serverProcess.isAlive()) {
                                 write("_restart");
                             }
-                            running = false;
+                            System.exit(0);
                             break;
                         default:
                             if (line.startsWith("write ")) {
-                                write(line.replaceFirst("write ", "").replaceAll(" ", "\", \""));
-                                System.out.println("> RunConsoleCommande(\"" + line.replaceFirst("write ", "").replaceAll(" ", "\", \"") + "\")");
+                                write(line.replaceFirst("write ", ""));
+                                System.out.println("> " + line.replaceFirst("write ", ""));
                             } else {
                                 System.out.println("stopServer | startServer | stop | write [string]");
                             }
@@ -69,32 +56,23 @@ public class Main {
                 e.printStackTrace();
             }
         }).start();
-    }*/
+    }
 
-    /*
+    /**
      * Use to send commande to the garry's mod server.
      *
-     * @param data The commande to send. Warming : with the method, some command will not be execute by the garry's mod server
-
+     * @param data The commande to send.
+        */
     private static void write(String data) {
         try {
-            FileWriter fw = new FileWriter(commandFile);
-            fw.write("RunConsoleCommand(\"" + data + "\")\n");
-            fw.flush();
-            fw.close();
-
-            Thread.sleep(3000);
-
-            fw = new FileWriter(commandFile);
-            fw.write("-- NE PAS MODIFIER CE FICHIER"
-                    + "\n-- fichier permettant a au programme java d'envoyer des commandes a gmod"
-                    + "\nprint(\"module commande app java active\")");
-            fw.flush();
-            fw.close();
-        } catch (InterruptedException | IOException e) {
+            if (printer != null) {
+                printer.write(data + "\n");
+                printer.flush();
+            }
+        } catch (IOException e) {
             e.printStackTrace();
         }
-    }*/
+    }
 
     /**
      * Use to start de garry's mod server
@@ -102,23 +80,44 @@ public class Main {
     private static void start() {
         try {
             System.out.println(new SimpleDateFormat("[hh:mm:ss.SSS]").format(new Date(System.currentTimeMillis())) + "Gmod's process is going to start");
-            serverProcess = new ProcessBuilder("./srcds_run -game garrysmod +maxplayers 15 +map rp_rockford_karnaka +host_workshop_collection 1382039356 -norestart".split(" ")).redirectInput(ProcessBuilder.Redirect.INHERIT).directory(new File("/home/jeu/Steam/Gmod")).start();
 
+            //String[] cmd = ("./srcds_run -game garrysmod +maxplayers 15 +map rp_rockford_karnaka +host_workshop_collection 1382039356 -norestart").split(" ");
+
+            String[] cmd = new String[4];
+            cmd[0] = "su";
+            cmd[1] = "sixclones";
+            cmd[2] = "-c";
+            cmd[3] = "./main.exe -game garrysmod +maxplayers 15 +map rp_rockford_karnaka +host_workshop_collection 1382039356 -norestart";
+
+            serverProcess = new ProcessBuilder(cmd).directory(new File("/home/jeu/Steam/Gmod/")).start();
+
+            printer = new BufferedWriter(new OutputStreamWriter(serverProcess.getOutputStream()));
             scan(new BufferedReader(new InputStreamReader(serverProcess.getInputStream())));
 
             processExitDetector();
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    private static void scan(BufferedReader br) throws IOException {
-        while (serverProcess.isAlive()) {
-            String line;
-            if ((line= br.readLine()) != null) {
-                System.out.println(line);
+    /**
+     * Scan the given buffer in a new thread
+     *
+     * @param br the buffer
+     */
+    private static void scan(BufferedReader br) {
+        new Thread(() -> {
+            try {
+                while (serverProcess.isAlive()) {
+                    String line;
+                    if ((line = br.readLine()) != null) {
+                        System.out.println(line);
+                    }
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-        }
+        }).start();
     }
 
     /**
@@ -136,4 +135,5 @@ public class Main {
             }
         }).start();
     }
+
 }
