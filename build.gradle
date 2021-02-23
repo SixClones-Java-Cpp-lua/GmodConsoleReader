@@ -1,0 +1,38 @@
+plugins {
+    id 'java'
+}
+
+apply plugin: 'application'
+
+group 'fr.sixclones.gmodconsolereader'
+version '1.0'
+
+repositories {
+    jcenter()
+    mavenCentral()
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs('src')
+        }
+    }
+}
+
+dependencies {
+    compile group: 'org.jetbrains.pty4j', name: 'pty4j', version: '0.11.4'
+}
+
+
+mainClassName = 'Main'
+
+jar{
+    manifest {
+        attributes "Main-Class": mainClassName
+    }
+
+    from {
+        configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+}

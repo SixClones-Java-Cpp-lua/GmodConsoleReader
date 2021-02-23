@@ -1,3 +1,5 @@
+import com.pty4j.PtyProcessBuilder;
+
 import java.io.*;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -9,11 +11,11 @@ public class Main {
 
     public static void main(String[] args) {
         scanConsole();
-        start();
+        start(args);
     }
 
     /**
-     * Use to scan the data the user give to the program
+     * Scan the cmd for user input
      */
     private static void scanConsole() {
         new Thread(() -> {
@@ -21,35 +23,11 @@ public class Main {
                 String line;
                 BufferedReader sys = new BufferedReader(new InputStreamReader(System.in));
                 while ((line = sys.readLine()) != null) {
-                    switch (line) {
-                        case "startServer":
-                            if (!serverProcess.isAlive()) {
-                                start();
-                            } else {
-                                System.out.println(new SimpleDateFormat("[hh:mm:ss.SSS]").format(new Date(System.currentTimeMillis())) + "Gmod is already start");
-                            }
-                            break;
-                        case "stopServer":
-                            if (serverProcess.isAlive()) {
-                                write("_restart");
-                            } else {
-                                System.out.println(new SimpleDateFormat("[hh:mm:ss.SSS]").format(new Date(System.currentTimeMillis())) + "Gmod is already stop");
-                            }
-                            break;
-                        case "stop":
-                            if (serverProcess.isAlive()) {
-                                write("_restart");
-                            }
-                            System.exit(0);
-                            break;
-                        default:
-                            if (line.startsWith("write ")) {
-                                write(line.replaceFirst("write ", ""));
-                                System.out.println("> " + line.replaceFirst("write ", ""));
-                            } else {
-                                System.out.println("stopServer | startServer | stop | write [string]");
-                            }
-                            break;
+                    if (serverProcess.isAlive()) {
+                        write(line);
+                    } else {
+                        log("The garry's mod server is off, stopping the java process");
+                        System.exit(0);
                     }
                 }
             } catch (IOException e) {
@@ -59,15 +37,16 @@ public class Main {
     }
 
     /**
-     * Use to send commande to the garry's mod server.
+     * Send a command to the garry's mod server.
      *
-     * @param data The commande to send.
-        */
+     * @param data The command.
+     */
     private static void write(String data) {
         try {
             if (printer != null) {
                 printer.write(data + "\n");
                 printer.flush();
+                log(">" + data);
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -76,20 +55,16 @@ public class Main {
 
     /**
      * Use to start de garry's mod server
+     *
+     * @param cmd the arg use to start the process
      */
-    private static void start() {
+    private static void start(String[] cmd) {
         try {
-            System.out.println(new SimpleDateFormat("[hh:mm:ss.SSS]").format(new Date(System.currentTimeMillis())) + "Gmod's process is going to start");
+            log("Gmod process is going to start");
 
-            //String[] cmd = ("./srcds_run -game garrysmod +maxplayers 15 +map rp_rockford_karnaka +host_workshop_collection 1382039356 -norestart").split(" ");
-
-            String[] cmd = new String[4];
-            cmd[0] = "su";
-            cmd[1] = "sixclones";
-            cmd[2] = "-c";
-            cmd[3] = "./main.exe -game garrysmod +maxplayers 15 +map rp_rockford_karnaka +host_workshop_collection 1382039356 -norestart";
-
-            serverProcess = new ProcessBuilder(cmd).directory(new File("/home/jeu/Steam/Gmod/")).start();
+            serverProcess = new PtyProcessBuilder(cmd)
+                    //.setDirectory("/home/jeu/Steam/Gmod/") // use the dir where the jar is
+                    .start();
 
             printer = new BufferedWriter(new OutputStreamWriter(serverProcess.getOutputStream()));
             scan(new BufferedReader(new InputStreamReader(serverProcess.getInputStream())));
@@ -111,7 +86,7 @@ public class Main {
                 while (serverProcess.isAlive()) {
                     String line;
                     if ((line = br.readLine()) != null) {
-                        System.out.println(line);
+                        log(line);
                     }
                 }
             } catch (IOException e) {
@@ -121,19 +96,31 @@ public class Main {
     }
 
     /**
-     * The function wait until the process run
+     * The function wait until the process stop
      */
     private static void processExitDetector() {
         new Thread(() -> {
             if (serverProcess.isAlive()) {
                 try {
                     serverProcess.waitFor();
-                    System.out.println(new SimpleDateFormat("[hh:mm:ss.SSS]").format(new Date(System.currentTimeMillis())) + "Gmod has stoped");
+                    log("Gmod has stopped");
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
             }
         }).start();
+    }
+
+
+    static SimpleDateFormat date = new SimpleDateFormat("[hh:mm:ss.SSS]");
+
+    /**
+     * log a message
+     *
+     * @param s the message
+     */
+    public static void log(String s) {
+        System.out.println(date.format(new Date(System.currentTimeMillis())) + s);
     }
 
 }
