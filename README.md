@@ -6,7 +6,7 @@ output of a garry's mod server.
 ## Content
 
 - Only one [java file](src/Main.java) that can start and read a garry's mod server
-- A [cpp file](src/cpp/main.cpp) not used anymore, that used to do the job of the pty4J lib
+- A [cpp file](src/cpp/main.cpp) not used anymore, that was used to do the job of the pty4J lib
 
 ## Compile
 
